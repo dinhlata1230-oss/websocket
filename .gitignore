@@ -1,41 +1,49 @@
-# Compiled Lua sources
-luac.out
+local SERVER_URL = "http://localhost:8080/next"
+local POLL_DELAY = 3
 
-# luarocks build files
-*.src.rock
-*.zip
-*.tar.gz
+local function httpGet(url)
+    if syn and syn.request then
+        return syn.request({ Url = url, Method = "GET" }).Body
+    elseif request then
+        return request({ Url = url, Method = "GET" }).Body
+    elseif http_request then
+        return http_request({ Url = url, Method = "GET" }).Body
+    end
+end
 
-# Object files
-*.o
-*.os
-*.ko
-*.obj
-*.elf
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
 
-# Precompiled Headers
-*.gch
-*.pch
+print("[CLIENT]")
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-*.def
-*.exp
+while true do
+    local body = nil
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+    pcall(function()
+        body = httpGet(SERVER_URL)
+    end)
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+    if body then
+        print("[RAW]", body)
 
+        local ok, data = pcall(function()
+            return HttpService:JSONDecode(body)
+        end)
+
+        if ok and data then
+            if data.jobId then
+                print("[JOIN]", data.jobId)
+
+                TeleportService:TeleportToPlaceInstance(
+                    data.placeId,
+                    data.jobId,
+                    player
+                )
+            end
+        end
+    end
+
+    task.wait(POLL_DELAY)
+end
